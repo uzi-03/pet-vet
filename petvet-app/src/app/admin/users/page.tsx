@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: number;
@@ -11,6 +12,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,15 +21,42 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState({ username: "", password: "", role: "user", type: "owner" });
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) {
+        router.push("/login");
+        return;
+      }
+      const user = await res.json();
+      if (user.role !== "admin") {
+        router.push("/dashboard");
+        return;
+      }
+      setAuthChecked(true);
+      fetchUsers();
+    } catch {
+      router.push("/login");
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/users");
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          router.push("/login");
+          return;
+        }
+        throw new Error("Failed to fetch users");
+      }
       const data = await res.json();
       setUsers(data);
     } catch {
@@ -113,10 +142,32 @@ export default function AdminUsersPage() {
     }
   };
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">User Management</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' });
+              router.push('/login');
+            }}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold"
+          >
+            Sign Out
+          </button>
+        </div>
         <div className="flex justify-end mb-4">
           <button
             onClick={openAddForm}
@@ -126,7 +177,7 @@ export default function AdminUsersPage() {
           </button>
         </div>
         {loading ? (
-          <div className="text-center text-gray-500">Loading users...</div>
+          <div className="text-center text-gray-600">Loading users...</div>
         ) : error ? (
           <div className="text-center text-red-600">{error}</div>
         ) : (
@@ -134,30 +185,30 @@ export default function AdminUsersPage() {
             <table className="min-w-full border border-gray-200 rounded-lg">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="py-2 px-4 text-left">Username</th>
-                  <th className="py-2 px-4 text-left">Role</th>
-                  <th className="py-2 px-4 text-left">Type</th>
-                  <th className="py-2 px-4 text-left">Created</th>
-                  <th className="py-2 px-4 text-left">Actions</th>
+                  <th className="py-2 px-4 text-left text-gray-800 font-semibold">Username</th>
+                  <th className="py-2 px-4 text-left text-gray-800 font-semibold">Role</th>
+                  <th className="py-2 px-4 text-left text-gray-800 font-semibold">Type</th>
+                  <th className="py-2 px-4 text-left text-gray-800 font-semibold">Created</th>
+                  <th className="py-2 px-4 text-left text-gray-800 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.id} className="border-t">
-                    <td className="py-2 px-4">{user.username}</td>
-                    <td className="py-2 px-4 capitalize">{user.role}</td>
-                    <td className="py-2 px-4 capitalize">{user.type}</td>
-                    <td className="py-2 px-4">{new Date(user.created_at).toLocaleString()}</td>
+                  <tr key={user.id} className="border-t hover:bg-gray-50">
+                    <td className="py-2 px-4 text-gray-800">{user.username}</td>
+                    <td className="py-2 px-4 text-gray-800 capitalize">{user.role}</td>
+                    <td className="py-2 px-4 text-gray-800 capitalize">{user.type}</td>
+                    <td className="py-2 px-4 text-gray-800">{new Date(user.created_at).toLocaleString()}</td>
                     <td className="py-2 px-4">
                       <button
                         onClick={() => openEditForm(user)}
-                        className="mr-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        className="mr-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(user)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
                       >
                         Delete
                       </button>
@@ -180,7 +231,7 @@ export default function AdminUsersPage() {
               >
                 ×
               </button>
-              <h2 className="text-xl font-bold mb-4 text-center">{editUser ? "Edit User" : "Add User"}</h2>
+              <h2 className="text-xl font-bold mb-4 text-center text-gray-800">{editUser ? "Edit User" : "Add User"}</h2>
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>

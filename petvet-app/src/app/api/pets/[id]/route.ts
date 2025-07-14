@@ -2,19 +2,50 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/database';
 import { Pet, VetRecord } from '@/types';
 
+// Helper function to get user from session
+function getUserFromSession(request: NextRequest) {
+  const session = request.cookies.get('session')?.value;
+  if (!session) return null;
+  try {
+    return JSON.parse(Buffer.from(session, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
 // GET /api/pets/[id] - Get a specific pet with its vet records
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = getUserFromSession(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const petId = parseInt(params.id);
     
-    const pet = db.prepare('SELECT * FROM pets WHERE id = ?').get(petId);
+    // Get pet with owner information
+    const pet = db.prepare(`
+      SELECT p.*, u.username as owner_username 
+      FROM pets p 
+      LEFT JOIN users u ON p.owner_id = u.id 
+      WHERE p.id = ?
+    `).get(petId) as any;
+    
     if (!pet) {
       return NextResponse.json(
         { error: 'Pet not found' },
         { status: 404 }
+      );
+    }
+
+    // Check if user can access this pet (owner or admin)
+    if (user.role !== 'admin' && pet.owner_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
       );
     }
 
@@ -40,7 +71,29 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = getUserFromSession(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const petId = parseInt(params.id);
+    
+    // Check if pet exists and user can access it
+    const existingPet = db.prepare('SELECT * FROM pets WHERE id = ?').get(petId) as any;
+    if (!existingPet) {
+      return NextResponse.json(
+        { error: 'Pet not found' },
+        { status: 404 }
+      );
+    }
+
+    if (user.role !== 'admin' && existingPet.owner_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
+
     const body: Pet = await request.json();
     
     const { name, species, breed, birth_date, weight, color, microchip_id, owner_name, owner_phone, owner_email, notes } = body;
@@ -85,7 +138,28 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = getUserFromSession(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const petId = parseInt(params.id);
+    
+    // Check if pet exists and user can access it
+    const existingPet = db.prepare('SELECT * FROM pets WHERE id = ?').get(petId) as any;
+    if (!existingPet) {
+      return NextResponse.json(
+        { error: 'Pet not found' },
+        { status: 404 }
+      );
+    }
+
+    if (user.role !== 'admin' && existingPet.owner_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
     
     const result = db.prepare('DELETE FROM pets WHERE id = ?').run(petId);
     

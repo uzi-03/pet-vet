@@ -2,27 +2,59 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Pet } from "@/types";
 
 export default function PetsPage() {
+  const router = useRouter();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetchPets();
+    checkAuthAndFetchPets();
   }, []);
 
-  const fetchPets = async () => {
+  const checkAuthAndFetchPets = async () => {
     try {
-      const response = await fetch("/api/pets");
-      const data = await response.json();
-      setPets(data);
+      // Check authentication
+      const authRes = await fetch("/api/auth/me");
+      if (!authRes.ok) {
+        router.push("/login");
+        return;
+      }
+      const userData = await authRes.json();
+      setUser(userData);
+
+      // Fetch pets
+      const petsRes = await fetch("/api/pets");
+      if (!petsRes.ok) {
+        if (petsRes.status === 401) {
+          router.push("/login");
+          return;
+        }
+        throw new Error("Failed to fetch pets");
+      }
+      const petsData = await petsRes.json();
+      setPets(petsData);
     } catch (error) {
-      // handle error
+      setError("Failed to load pets");
     } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading pets...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -31,11 +63,14 @@ export default function PetsPage() {
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">My Pets</h1>
             <p className="text-gray-600 text-lg">Manage your pets and their records</p>
+            {user && (
+              <p className="text-sm text-gray-500 mt-1">Logged in as: {user.username} ({user.role})</p>
+            )}
           </div>
           <button
             onClick={async () => {
               await fetch('/api/auth/logout', { method: 'POST' });
-              window.location.href = '/';
+              router.push('/login');
             }}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold"
           >
@@ -50,8 +85,8 @@ export default function PetsPage() {
             Add New Pet
           </Link>
         </div>
-        {loading ? (
-          <div className="text-center text-gray-500">Loading pets...</div>
+        {error ? (
+          <div className="text-center text-red-600">{error}</div>
         ) : pets.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
@@ -109,7 +144,10 @@ export default function PetsPage() {
                     </div>
                   </div>
                   <div className="space-y-2 text-sm text-gray-600">
-                    {pet.owner_name && <p><span className="font-medium">Owner:</span> {pet.owner_name}</p>}
+                    {pet.owner_username && user?.role === 'admin' && (
+                      <p><span className="font-medium">Owner:</span> {pet.owner_username}</p>
+                    )}
+                    {pet.owner_name && <p><span className="font-medium">Contact:</span> {pet.owner_name}</p>}
                     {pet.weight && <p><span className="font-medium">Weight:</span> {pet.weight} kg</p>}
                     {pet.birth_date && <p><span className="font-medium">Birth Date:</span> {new Date(pet.birth_date).toLocaleDateString()}</p>}
                   </div>

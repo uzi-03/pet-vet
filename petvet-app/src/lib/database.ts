@@ -30,8 +30,10 @@ export function initializeDatabase() {
       owner_email TEXT,
       photo_url TEXT,
       notes TEXT,
+      owner_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);
 
@@ -40,16 +42,18 @@ export function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS vet_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       pet_id INTEGER NOT NULL,
+      vet_id INTEGER NOT NULL,
       visit_date TEXT NOT NULL,
       reason TEXT NOT NULL,
       diagnosis TEXT,
       treatment TEXT,
       medications TEXT,
       next_visit_date TEXT,
-      vet_name TEXT,
+      office_location TEXT,
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (pet_id) REFERENCES pets (id) ON DELETE CASCADE
+      FOREIGN KEY (pet_id) REFERENCES pets (id) ON DELETE CASCADE,
+      FOREIGN KEY (vet_id) REFERENCES users (id) ON DELETE CASCADE
     )
   `);
 
@@ -64,6 +68,55 @@ export function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Create vet_patients table for vet-pet relationships
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS vet_patients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vet_id INTEGER NOT NULL,
+      pet_id INTEGER NOT NULL,
+      assigned_date TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (vet_id) REFERENCES users (id) ON DELETE CASCADE,
+      FOREIGN KEY (pet_id) REFERENCES pets (id) ON DELETE CASCADE,
+      UNIQUE(vet_id, pet_id)
+    )
+  `);
+
+  // Create offices table for vet office locations
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS offices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      address TEXT,
+      phone TEXT,
+      email TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Add owner_id column to pets table if it doesn't exist
+  try {
+    db.exec('ALTER TABLE pets ADD COLUMN owner_id INTEGER REFERENCES users(id)');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add vet_id column to vet_records table if it doesn't exist
+  try {
+    db.exec('ALTER TABLE vet_records ADD COLUMN vet_id INTEGER REFERENCES users(id)');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add office_location column to vet_records table if it doesn't exist
+  try {
+    db.exec('ALTER TABLE vet_records ADD COLUMN office_location TEXT');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
 
   console.log('Database initialized successfully');
 }
