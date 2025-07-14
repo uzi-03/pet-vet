@@ -97,6 +97,42 @@ export function initializeDatabase() {
     )
   `);
 
+  // Create partnered_vet_offices table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS partnered_vet_offices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      address TEXT NOT NULL,
+      detail_link TEXT,
+      external_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create preferred_vet_offices table (pet owners' preferred vet offices)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS preferred_vet_offices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      vet_office_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+      FOREIGN KEY (vet_office_id) REFERENCES partnered_vet_offices (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create vet_office_members table (vet users linked to offices)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS vet_office_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vet_user_id INTEGER NOT NULL,
+      vet_office_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (vet_user_id) REFERENCES users (id) ON DELETE CASCADE,
+      FOREIGN KEY (vet_office_id) REFERENCES partnered_vet_offices (id) ON DELETE CASCADE
+    )
+  `);
+
   // Add owner_id column to pets table if it doesn't exist
   try {
     db.exec('ALTER TABLE pets ADD COLUMN owner_id INTEGER REFERENCES users(id)');

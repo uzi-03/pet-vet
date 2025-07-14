@@ -63,6 +63,12 @@ export default function AdminDashboard() {
           >
             Manage Users
           </Link>
+          <Link
+            href="/admin/partnered-vets"
+            className="block w-full py-3 px-6 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Manage Partnered Vet Offices
+          </Link>
           {/* Add more admin tasks here as needed */}
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { VetDashboardStats } from "@/types";
+import VetOfficeMemberships from "./VetOfficeMemberships";
 
 export default function VetDashboard() {
   const router = useRouter();
@@ -138,6 +139,21 @@ export default function VetDashboard() {
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Link
+            href="/vet/locator"
+            className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200 border-2 border-green-500"
+          >
+            <div className="flex items-center mb-4">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h3 className="ml-3 text-lg font-semibold text-gray-800">Join a Vet Office</h3>
+            </div>
+            <p className="text-gray-600">Find and join a partnered vet office</p>
+          </Link>
+
+          <Link
             href="/vet/patients"
             className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200"
           >
@@ -227,6 +243,12 @@ export default function VetDashboard() {
             </div>
             <p className="text-gray-600">Configure your veterinary practice</p>
           </Link>
+        </div>
+
+        {/* Vet Office Memberships */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-2">My Vet Office Memberships</h2>
+          <VetOfficeMemberships />
         </div>
 
         {/* Recent Activity */}
